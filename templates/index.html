@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق الزراعة الذكية - كشف ومتابعة أمراض النباتات</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌿 نظام الزراعة الذكية (Smart Agriculture AI)</h1>
+            <p>فحص أوراق النباتات ومتابعة سجلها الصحي بالذكاء الاصطناعي</p>
+        </header>
+
+        <form method="POST" enctype="multipart/form-data" class="upload-box" id="scanForm">
+            <div class="input-group">
+                <label for="plant_name" class="file-label">اسم أو موقع النبات (للسجل):</label>
+                <input type="text" name="plant_name" id="plant_name" placeholder="مثال: طماطم - حوض رقم 1" class="text-input">
+            </div>
+
+            <!-- حقل مخفي للكاميرا المباشرة -->
+            <input type="file" name="leaf_image" id="cameraInput" accept="image/*" capture="environment" hidden onchange="submitWithLoading(this)">
+            <!-- حقل مخفي لاختيار صورة من الاستوديو -->
+            <input type="file" name="leaf_image" id="galleryInput" accept="image/*" hidden onchange="submitWithLoading(this)">
+
+            <div class="action-buttons">
+                <button type="button" class="btn-camera" onclick="triggerInput('cameraInput')">
+                    📷 التقاط صورة بالكاميرا
+                </button>
+                <button type="button" class="btn-gallery" onclick="triggerInput('galleryInput')">
+                    🖼️ اختيار من الاستوديو
+                </button>
+            </div>
+            <p id="loadingMsg" class="loading-text" style="display:none;">⏳ جاري تحليل الورقة بالذكاء الاصطناعي...</p>
+        </form>
+
+        {% if result %}
+        <div class="result-card {{ 'healthy' if result.is_healthy else 'diseased' }}">
+            <div class="image-preview">
+                <img src="{{ result.image_path }}" alt="Uploaded Plant Leaf">
+            </div>
+            <div class="result-details">
+                <span class="badge">{{ result.status }}</span>
+                <p class="plant-title">🌱 النبات: <strong>{{ result.plant_name }}</strong></p>
+                <h2>التصنيف العلمي: <span dir="ltr">{{ result.disease_name }}</span></h2>
+                <p class="confidence">نسبة ثقة النموذج: <strong>{{ result.confidence }}%</strong></p>
+                <div class="advice-box">
+                    <strong>الإرشاد الزراعي المقترح:</strong>
+                    <p>{{ result.advice }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- قسم سجل متابعة النباتات -->
+        <section class="history-section">
+            <div class="history-header">
+                <h2>📋 سجل متابعة صحة النباتات ({{ history|length }})</h2>
+            </div>
+
+            {% if history %}
+            <div class="history-list">
+                {% for item in history %}
+                <div class="history-item {{ 'border-healthy' if item.is_healthy else 'border-diseased' }}">
+                    <img src="{{ item.image_path }}" alt="Leaf Thumbnail" class="thumb">
+                    <div class="history-info">
+                        <div class="history-top">
+                            <strong>🌱 {{ item.plant_name }}</strong>
+                            <span class="mini-badge {{ 'bg-healthy' if item.is_healthy else 'bg-diseased' }}">
+                                {{ item.status }}
+                            </span>
+                        </div>
+                        <p class="sci-name" dir="ltr">{{ item.disease_name }} ({{ item.confidence }}%)</p>
+                        <small class="date-text">🕒 {{ item.created_at }}</small>
+                    </div>
+                    <form method="POST" action="{{ url_for('delete_record', record_id=item.id) }}">
+                        <button type="submit" class="btn-delete" title="حذف السجل">🗑️</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-msg">لا توجد فحوصات مسجلة بعد. ابدأ بفحص أول نبات لإضافته للسجل.</p>
+            {% endif %}
+        </section>
+
+    </div>
+
+    <script>
+        function triggerInput(inputId) {
+            // تعطيل الحقل الآخر حتى لا يرسل ملف فارغ
+            document.getElementById('cameraInput').disabled = (inputId !== 'cameraInput');
+            document.getElementById('galleryInput').disabled = (inputId !== 'galleryInput');
+            document.getElementById(inputId).click();
+        }
+
+        function submitWithLoading(input) {
+            if (input.files && input.files.length > 0) {
+                document.getElementById('loadingMsg').style.display = 'block';
+                document.getElementById('scanForm').submit();
+            }
+        }
+    </script>
+</body>
+</html>
